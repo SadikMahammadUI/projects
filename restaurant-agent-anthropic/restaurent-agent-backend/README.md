@@ -1,6 +1,6 @@
 # Restaurant Assistant API
 
-A restaurant recommendation assistant powered by Claude (Anthropic). Ask for restaurants by cuisine, get details such as address, phone and hours, and check reservation availability. The interface is FastAPI's built-in **Swagger UI** at `/docs`, so there is no separate frontend.
+A restaurant recommendation assistant built with CrewAI and powered by Claude (Anthropic). Ask for restaurants by cuisine, get details such as address, phone and hours, and check reservation availability. The interface is FastAPI's built-in **Swagger UI** at `/docs`, so there is no separate frontend.
 
 ## How it works
 
@@ -11,8 +11,8 @@ Swagger UI (/docs)
   FastAPI  --- load past turns --->  SESSIONS (in memory, by session_id)
       |
       v
-  Claude (Anthropic API)  <--->  tools: search / details / reservation
-      |        (loop until Claude gives a final answer)
+  CrewAI agent (Claude)  <--->  tools: search / details / reservation
+      |        (the agent calls tools until it has a final answer)
       v
   save user message + final reply to SESSIONS
       |
@@ -26,8 +26,9 @@ Only plain-text turns are saved (your message and the final reply), never tool b
 
 ```
 restaurent-agent-backend/
-├── main.py            # FastAPI app, sessions, Claude tool-calling loop
-├── tools.py           # Tool functions, sample data, tool schemas
+├── main.py            # FastAPI app and conversation sessions
+├── agent.py           # CrewAI agent, task, crew and tool wrappers
+├── tools.py           # Tool functions and sample data
 ├── requirements.txt   # Python dependencies
 ├── .env.example       # Environment variable template
 ├── CODE.md            # Full source listing
@@ -37,6 +38,7 @@ restaurent-agent-backend/
 ## Setup
 
 ```bash
+# CrewAI needs Python 3.10-3.13 (3.12 recommended)
 python -m venv .venv
 # Windows: .venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
@@ -84,12 +86,13 @@ Open http://localhost:8000 (it redirects to `/docs`).
 - There is no authentication. Anyone who can reach the server can use your API key, so do not expose it publicly.
 - CORS is not needed because Swagger UI is served by the same app.
 - The restaurant data is sample data in `tools.py`.
+- CrewAI anonymous telemetry is turned off in `agent.py` (`OTEL_SDK_DISABLED`).
 
 ## Adding a new tool
 
 1. Write the function in `tools.py`.
-2. Add its schema (`name`, `description`, `input_schema`) to `tool_definitions`.
-3. Register it in the `tool_functions` dict under the same name.
-4. Optionally mention it in the `system_prompt` in `main.py`.
+2. In `build_tools` in `agent.py`, wrap it with `@tool("name")`. The docstring is the description Claude sees, and the type hints define its arguments.
+3. Add the wrapper to the list `build_tools` returns.
+4. Optionally mention it in `BACKSTORY` in `agent.py`.
 
 Restart the server and Claude can call it.

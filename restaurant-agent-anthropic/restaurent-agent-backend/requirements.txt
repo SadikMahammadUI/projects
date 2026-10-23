@@ -1,5 +1,6 @@
 fastapi
 uvicorn[standard]
+crewai
 anthropic
 pydantic
 python-dotenv
